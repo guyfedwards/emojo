@@ -12,8 +12,8 @@ provider:
   region: eu-west-1
 
   environment:
-    ACCESS_TOKEN: ${env:ACCESS_TOKEN, "derp"}
-    VERIFICATION_TOKEN: ${env:VERIFICATION_TOKEN, "derp2"}
+    ACCESS_TOKEN: ${env:ACCESS_TOKEN}
+    VERIFICATION_TOKEN: ${env:VERIFICATION_TOKEN}
 
 functions:
   index:
@@ -29,4 +29,4 @@ package:
 custom:
   serverless-offline:
     # dontPrintOutput: true
-    port: ${env:WEBSERVER_PORT, '3020'}
+    port: ${env:WEBSERVER_PORT, '5020'}
