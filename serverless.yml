@@ -42,9 +42,9 @@ provider:
 #            - "/*"
 
 # you can define service wide environment variables here
-environment:
-  ACCESS_TOKEN: ${env:ACCESS_TOKEN, "derp"}
-  VERIFICATION_TOKEN: ${env:VERIFICATION_TOKEN, "derp2"}
+  environment:
+    ACCESS_TOKEN: ${env:ACCESS_TOKEN, "derp"}
+    VERIFICATION_TOKEN: ${env:VERIFICATION_TOKEN, "derp2"}
 
 # you can add packaging information here
 #package:
