@@ -1,0 +1,20 @@
+{
+  "name": "emojo",
+  "version": "0.0.1",
+  "repository": "git@github.com:guyfedwards/emojo.git",
+  "author": [
+    "Guy Edwards",
+    "Ben Swinburne"
+  ],
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "develop": "sls offline"
+  },
+  "devDependencies": {
+    "serverless": "^1.32.0",
+    "serverless-dotenv-plugin": "^2.0.1",
+    "serverless-offline": "^3.31.0"
+  },
+  "dependencies": {}
+}
