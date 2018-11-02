@@ -9,12 +9,27 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "develop": "sls offline"
+    "deploy": "sls deploy",
+    "develop": "sls offline",
+    "lint": "eslint src/",
+    "lint:fix": "eslint --fix src/ *.js",
+    "precommit": "yarn lint",
+    "prepush": "yarn test"
   },
   "devDependencies": {
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-promise": "^4.0.1",
+    "prettier": "^1.14.3",
     "serverless": "^1.32.0",
     "serverless-dotenv-plugin": "^2.0.1",
     "serverless-offline": "^3.31.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "eslint": "^5.8.0",
+    "eslint-config-prettier": "^3.1.0",
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-node": "^8.0.0",
+    "eslint-plugin-prettier": "^3.0.0",
+    "eslint-plugin-standard": "^4.0.0"
+  }
 }
