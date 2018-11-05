@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const axios = require('axios');
 const sharp = require('sharp');
 const crypto = require('crypto');
@@ -6,17 +7,11 @@ const Slack = require('slack-node');
 
 const slack = new Slack(process.env.ACCESS_TOKEN);
 
-const getFileMetadataFromId = id => {
+const slackAsPromise = (method, params) => {
   return new Promise((resolve, reject) => {
-    slack.api(
-      'files.info',
-      {
-        file: id,
-      },
-      (err, response) => {
-        err || !response.ok ? reject(err) : resolve(response.file);
-      }
-    );
+    slack.api(method, params, (err, response) => {
+      err || !response.ok ? reject(err || response) : resolve(response);
+    });
   });
 };
 
@@ -37,6 +32,7 @@ const handle = async message => {
     * Get data from message
       - File id
       - Channel so we know where to reply to
+    * Do we have a :alias: or shall we go by filename?
     * Get file info from file ID
     * Download the file
     * Determine if we need to resize it. width & height < 128px, & size < 64kb
@@ -48,9 +44,12 @@ const handle = async message => {
           there are other URLs for premade thumbnails but none @128px :(
      * Post back to slack
      * Upload to git
+     * Delete from disk
   */
 
-  const metadata = await getFileMetadataFromId(message.file_id);
+  const metadata = await slackAsPromise('files.info', {
+    file: message.file_id,
+  });
 
   const tmp = crypto.randomBytes(16).toString('hex');
   const writeStream = fs.createWriteStream(tmp);
@@ -62,7 +61,7 @@ const handle = async message => {
 
   axios({
     method: 'GET',
-    url: metadata.url_private,
+    url: metadata.file.url_private,
     responseType: 'stream',
     headers: {
       Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
@@ -76,19 +75,24 @@ const handle = async message => {
   );
 
   return streamAsPromise.then(() => {
-    slack.api(
-      'chat.postMessage',
-      {
-        text: 'I did make something, but i am yet to upload it...',
-        channel: '#lambda-test',
-      },
-      function(err, response) {
-        if (err) {
-          throw err;
-        }
-        console.log(response);
-      }
-    );
+    slackAsPromise('files.upload', {
+      title: 'Image',
+      filename: 'image.png',
+      filetype: 'auto',
+      channels: metadata.file.channels.join(','),
+      file: fs.createReadStream(path.resolve(tmp)),
+    })
+      .then(() => {
+        fs.unlink(tmp);
+      })
+      .catch(e => {
+        console.log(e);
+      });
+
+    // slackAsPromise('chat.postMessage', {
+    //   text: 'I did make something, but i am yet to upload it...',
+    //   channel: '#lambda-test',
+    // });
 
     return {
       done: true,
