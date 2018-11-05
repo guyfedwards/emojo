@@ -1,11 +1,27 @@
-const https = require('https');
-const fetch = require('node-fetch');
+const fs = require('fs');
+const axios = require('axios');
+const sharp = require('sharp');
+const crypto = require('crypto');
+const Slack = require('slack-node');
 
-const verify = (data, callback) => {
-  console.log('verify', data, process.env.VERIFICATION_TOKEN);
+const slack = new Slack(process.env.ACCESS_TOKEN);
 
+const getFileMetadataFromId = id => {
+  return new Promise((resolve, reject) => {
+    slack.api(
+      'files.info',
+      {
+        file: id,
+      },
+      (err, response) => {
+        err || !response.ok ? reject(err) : resolve(response.file);
+      }
+    );
+  });
+};
+
+const verify = data => {
   if (data.token === process.env.VERIFICATION_TOKEN) {
-    console.log('all good in the hood');
     return {
       body: JSON.stringify({
         challenge: data.challenge,
@@ -16,62 +32,82 @@ const verify = (data, callback) => {
   }
 };
 
-const handle = async event => {
-  console.log('handle', event);
-  // get image from files.list
+const handle = async message => {
+  /**
+    * Get data from message
+      - File id
+      - Channel so we know where to reply to
+    * Get file info from file ID
+    * Download the file
+    * Determine if we need to resize it. width & height < 128px, & size < 64kb
+        dimensions: file.original_w, file.original_h
+        size: file.size (bytes by the look of it)
+        useful: file.name, file.title (same as name?) file.mimetype file.filetype
+          file.channels[]
+        urls: file.url_private, file.url_private_download
+          there are other URLs for premade thumbnails but none @128px :(
+     * Post back to slack
+     * Upload to git
+  */
 
-  // resize image
+  const metadata = await getFileMetadataFromId(message.file_id);
 
-  // add image to git
+  const tmp = crypto.randomBytes(16).toString('hex');
+  const writeStream = fs.createWriteStream(tmp);
 
-  // test the message for a match and not a bot
-  // if (!event.bot_id && /(emoji)/gi.test(event.text)) {
-  //   var text = `<@${event.user}> isn't AWS Lambda awesome?`;
-  var message = {
-    token: process.env.ACCESS_TOKEN,
-    channel: event.channel_id,
-    text: 'Fucking idiot!',
-  };
+  const resizer = sharp().resize(128, 128, {
+    fit: 'inside',
+    withoutEnlargement: true,
+  });
 
-  let response;
-  try {
-    const res = await fetch('https://slack.com/api/chat.postMessage', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+  axios({
+    method: 'GET',
+    url: metadata.url_private,
+    responseType: 'stream',
+    headers: {
+      Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
+    },
+  }).then(response => {
+    response.data.pipe(resizer).pipe(writeStream);
+  });
+
+  const streamAsPromise = new Promise((resolve, reject) =>
+    writeStream.on('finish', resolve).on('error', reject)
+  );
+
+  return streamAsPromise.then(() => {
+    slack.api(
+      'chat.postMessage',
+      {
+        text: 'I did make something, but i am yet to upload it...',
+        channel: '#lambda-test',
       },
-      body: JSON.stringify(message),
-    });
+      function(err, response) {
+        if (err) {
+          throw err;
+        }
+        console.log(response);
+      }
+    );
 
-    response = await res.json();
-    console.log('response', response);
-  } catch (e) {
-    console.error(e);
-    throw new Error(e);
-  }
-
-  // var query = qs.stringify(message); // prepare the querystring
-  // console.log('query', query);
-  // https.get(`https://slack.com/api/chat.postmessage?${query}`);
-  // }
+    return {
+      done: true,
+    };
+  });
 };
 
 exports.handler = async (event, context) => {
   const body = JSON.parse(event.body);
-  console.log('call me handler', body);
 
   switch (body.type) {
     case 'url_verification': {
       return verify(body);
-      break;
     }
     case 'event_callback': {
-      return await handle(body.event);
-      break;
+      return handle(body.event);
     }
     default: {
       console.log('default ');
-      // callback(null);
     }
   }
 };

@@ -46,6 +46,10 @@
     "standard-version": "^4.4.0"
   },
   "dependencies": {
-    "node-fetch": "^2.2.0"
+    "axios": "^0.18.0",
+    "axois": "^1.0.0",
+    "node-fetch": "^2.2.0",
+    "sharp": "^0.21.0",
+    "slack-node": "^0.1.8"
   }
 }

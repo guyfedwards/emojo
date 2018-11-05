@@ -1,0 +1,22 @@
+{
+  "token": "i6HlnQTmxx3hMOjT19hAdiiF",
+  "team_id": "T02NMUQET",
+  "api_app_id": "ADT925685",
+  "event": {
+    "type": "file_shared",
+    "channel_id": "CDV5BC8RK",
+    "file_id": "FDVV7RGPM",
+    "user_id": "U02U8QS6S",
+    "file": {
+      "id": "FDVV7RGPM"
+    },
+    "event_ts": "1541436321.010800"
+  },
+  "type": "event_callback",
+  "event_id": "EvDVEEAEQ1",
+  "event_time": 1541436321,
+  "authed_users": [
+    "U02NMUQEV",
+    "U02U8QS6S"
+  ]
+}
