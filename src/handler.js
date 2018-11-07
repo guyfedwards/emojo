@@ -1,9 +1,7 @@
-const fs = require('fs');
-const url = require('url');
-const path = require('path');
 const AWS = require('aws-sdk');
 const axios = require('axios');
 const sharp = require('sharp');
+const stream = require('stream');
 const crypto = require('crypto');
 const Slack = require('slack-node');
 
@@ -56,7 +54,8 @@ const handle = async message => {
   });
 
   const tmp = crypto.randomBytes(16).toString('hex');
-  const writeStream = fs.createWriteStream(tmp);
+  // const writeStream = fs.createWriteStream(tmp);
+  const passThroughStream = stream.PassThrough();
 
   const resizer = sharp()
     .max()
@@ -73,11 +72,11 @@ const handle = async message => {
       Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
     },
   }).then(response => {
-    response.data.pipe(resizer).pipe(writeStream);
+    response.data.pipe(resizer).pipe(passThroughStream);
   });
 
   const streamAsPromise = new Promise((resolve, reject) =>
-    writeStream.on('finish', resolve).on('error', reject)
+    passThroughStream.on('finish', resolve).on('error', reject)
   );
 
   return streamAsPromise.then(async () => {
@@ -86,7 +85,8 @@ const handle = async message => {
     s3.upload({
       Bucket: process.env.S3_BUCKET,
       Key: tmp,
-      Body: fs.createReadStream(path.resolve(tmp)),
+      Body: passThroughStream,
+      // Body: fs.createReadStream(path.resolve(tmp)),
       ContentType: metadata.file.mimetype,
       ACL: 'public-read',
     })
@@ -99,8 +99,6 @@ const handle = async message => {
             { fallback: tmp, image_url: response.Location },
           ]),
         });
-
-        fs.unlinkSync(tmp);
       })
       .catch(e => {
         console.log(e);
