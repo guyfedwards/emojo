@@ -46,6 +46,7 @@
     "standard-version": "^4.4.0"
   },
   "dependencies": {
+    "aws-sdk": "^2.350.0",
     "axios": "^0.18.0",
     "axois": "^1.0.0",
     "node-fetch": "^2.2.0",

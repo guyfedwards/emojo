@@ -5,12 +5,12 @@
   "event": {
     "type": "file_shared",
     "channel_id": "CDV5BC8RK",
-    "file_id": "FDVV7RGPM",
+    "file_id": "FDZCL9LES",
     "user_id": "U02U8QS6S",
     "file": {
-      "id": "FDVV7RGPM"
+      "id": "FDZCL9LES"
     },
-    "event_ts": "1541436321.010800"
+    "event_ts": "1541608355.082100"
   },
   "type": "event_callback",
   "event_id": "EvDVEEAEQ1",

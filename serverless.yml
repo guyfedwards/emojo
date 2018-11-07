@@ -10,10 +10,22 @@ provider:
   stage: dev
   runtime: nodejs8.10
   region: eu-west-1
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "s3:PutObject"
+      Resource:
+        Fn::Join:
+          - ""
+          - - "arn:aws:s3:::"
+            - Ref: ResizedS3Bucket
+            - "/*"
 
   environment:
     ACCESS_TOKEN: ${env:ACCESS_TOKEN}
     VERIFICATION_TOKEN: ${env:VERIFICATION_TOKEN}
+    S3_BUCKET:
+      Ref: ResizedS3Bucket
 
 functions:
   index:
@@ -22,6 +34,17 @@ functions:
       - http:
           path: slack/emoji
           method: POST
+
+resources:
+  Resources:
+    ResizedS3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:service}-${self:provider.stage}
+  Outputs:
+    ResizedS3BucketName:
+      Value:
+        Ref: ResizedS3Bucket
 
 package:
   excludeDevDependencies: true

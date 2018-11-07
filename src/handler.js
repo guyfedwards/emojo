@@ -1,5 +1,7 @@
 const fs = require('fs');
+const url = require('url');
 const path = require('path');
+const AWS = require('aws-sdk');
 const axios = require('axios');
 const sharp = require('sharp');
 const crypto = require('crypto');
@@ -10,7 +12,9 @@ const slack = new Slack(process.env.ACCESS_TOKEN);
 const slackAsPromise = (method, params) => {
   return new Promise((resolve, reject) => {
     slack.api(method, params, (err, response) => {
-      err || !response.ok ? reject(err || response) : resolve(response);
+      err || !response.ok
+        ? reject(err || new Error(`Response from slack ${response.error}`))
+        : resolve(response);
     });
   });
 };
@@ -54,10 +58,12 @@ const handle = async message => {
   const tmp = crypto.randomBytes(16).toString('hex');
   const writeStream = fs.createWriteStream(tmp);
 
-  const resizer = sharp().resize(128, 128, {
-    fit: 'inside',
-    withoutEnlargement: true,
-  });
+  const resizer = sharp()
+    .max()
+    .resize(128, 128, {
+      fit: sharp.fit.inside,
+      withoutEnlargement: true,
+    });
 
   axios({
     method: 'GET',
@@ -74,24 +80,38 @@ const handle = async message => {
     writeStream.on('finish', resolve).on('error', reject)
   );
 
-  return streamAsPromise.then(() => {
-    slackAsPromise('files.upload', {
-      title: 'Image',
-      filename: 'image.png',
-      filetype: 'auto',
-      channels: metadata.file.channels.join(','),
-      file: fs.createReadStream(path.resolve(tmp)),
+  return streamAsPromise.then(async () => {
+    const s3 = new AWS.S3();
+
+    s3.upload({
+      Bucket: process.env.S3_BUCKET,
+      Key: tmp,
+      Body: fs.createReadStream(path.resolve(tmp)),
+      ContentType: metadata.file.mimetype,
+      ACL: 'public-read',
     })
-      .then(() => {
-        fs.unlink(tmp);
+      .promise()
+      .then(response => {
+        slackAsPromise('chat.postMessage', {
+          channel: '#lambda-test',
+          text: 'This is my attempt at the emoji you asked for',
+          attachments: JSON.stringify([
+            { fallback: tmp, image_url: response.Location },
+          ]),
+        });
+
+        fs.unlinkSync(tmp);
       })
       .catch(e => {
         console.log(e);
       });
 
-    // slackAsPromise('chat.postMessage', {
-    //   text: 'I did make something, but i am yet to upload it...',
-    //   channel: '#lambda-test',
+    // slackAsPromise('files.upload', {
+    //   title: 'Image',
+    //   filename: 'image.png',
+    //   filetype: 'auto',
+    //   channels: metadata.file.channels.join(','),
+    //   file: fs.createReadStream(path.resolve(tmp)),
     // });
 
     return {
