@@ -1,0 +1,52 @@
+{
+  "ok": true,
+  "file": {
+    "id": "FDVV7RGPM",
+    "created": 1541436318,
+    "timestamp": 1541436318,
+    "name": "amazon.png",
+    "title": "amazon.png",
+    "mimetype": "image/png",
+    "filetype": "png",
+    "pretty_type": "PNG",
+    "user": "U02U8QS6S",
+    "editable": false,
+    "size": 6122,
+    "mode": "hosted",
+    "is_external": false,
+    "external_type": "",
+    "is_public": true,
+    "public_url_shared": false,
+    "display_as_bot": false,
+    "username": "",
+    "url_private": "https://files.slack.com/files-pri/T02NMUQET-FDVV7RGPM/amazon.png",
+    "url_private_download": "https://files.slack.com/files-pri/T02NMUQET-FDVV7RGPM/download/amazon.png",
+    "thumb_64": "https://files.slack.com/files-tmb/T02NMUQET-FDVV7RGPM-dde3d38cfe/amazon_64.png",
+    "thumb_80": "https://files.slack.com/files-tmb/T02NMUQET-FDVV7RGPM-dde3d38cfe/amazon_80.png",
+    "thumb_360": "https://files.slack.com/files-tmb/T02NMUQET-FDVV7RGPM-dde3d38cfe/amazon_360.png",
+    "thumb_360_w": 128,
+    "thumb_360_h": 128,
+    "thumb_160": "https://files.slack.com/files-tmb/T02NMUQET-FDVV7RGPM-dde3d38cfe/amazon_160.png",
+    "image_exif_rotation": 1,
+    "original_w": 128,
+    "original_h": 128,
+    "permalink": "https://flat15.slack.com/files/U02U8QS6S/FDVV7RGPM/amazon.png",
+    "permalink_public": "https://slack-files.com/T02NMUQET-FDVV7RGPM-491dccdb5f",
+    "comments_count": 0,
+    "is_starred": false,
+    "shares": {
+      "public": [
+        null
+      ]
+    },
+    "channels": [
+      "CDV5BC8RK"
+    ],
+    "groups": [],
+    "ims": []
+  },
+  "comments": [],
+  "response_metadata": {
+    "next_cursor": ""
+  }
+}
