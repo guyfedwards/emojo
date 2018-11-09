@@ -11,6 +11,7 @@
   "scripts": {
     "deploy": "sls deploy",
     "develop": "sls offline",
+    "dev": "yarn develop",
     "lint": "eslint src/",
     "lint:fix": "eslint --fix src/ *.js",
     "test": "echo TODO",
