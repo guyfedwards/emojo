@@ -4,6 +4,7 @@ const sharp = require('sharp');
 const stream = require('stream');
 const crypto = require('crypto');
 const Slack = require('slack-node');
+const logger = require('./logger');
 
 const slack = new Slack(process.env.ACCESS_TOKEN);
 
@@ -19,13 +20,14 @@ const slackAsPromise = (method, params) => {
 
 const verify = data => {
   if (data.token === process.env.VERIFICATION_TOKEN) {
+    logger.info('Verification successful');
     return {
       body: JSON.stringify({
         challenge: data.challenge,
       }),
     };
   } else {
-    throw new Error('verification failed');
+    logger.error('Verification failed');
   }
 };
 
@@ -92,16 +94,23 @@ const handle = async message => {
     })
       .promise()
       .then(response => {
+        logger.info(`Uploaded to s3: ${tmp}`);
         slackAsPromise('chat.postMessage', {
           channel: '#lambda-test',
           text: 'This is my attempt at the emoji you asked for',
           attachments: JSON.stringify([
             { fallback: tmp, image_url: response.Location },
           ]),
-        });
+        })
+          .then(() => {
+            logger.info(`Sent to slack: ${tmp}`);
+          })
+          .catch(e => {
+            logger.error(`Failed to upload to slack: ${tmp}`, e);
+          });
       })
       .catch(e => {
-        console.log(e);
+        logger.error(`Failed to upload to s3: ${tmp}`);
       });
 
     // slackAsPromise('files.upload', {
@@ -129,7 +138,7 @@ exports.handler = async (event, context) => {
       return handle(body.event);
     }
     default: {
-      console.log('default ');
+      logger.info('Hit default switch, body.type has no matches');
     }
   }
 };
