@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const AWS = require('aws-sdk');
 const axios = require('axios');
 const sharp = require('sharp');
@@ -95,7 +96,8 @@ const handle = async message => {
   const emojiAlias = emojiMsg.text.replace(/:/g, '');
 
   const tmp = crypto.randomBytes(16).toString('hex');
-  const writeStream = fs.createWriteStream(tmp);
+  const tmpPath = path.resolve(os.tmpdir(), tmp);
+  const writeStream = fs.createWriteStream(tmpPath);
 
   const resizer = sharp()
     .max()
@@ -126,14 +128,14 @@ const handle = async message => {
       Bucket: process.env.S3_BUCKET,
       Key: emojiAlias,
       // Body: writeStream,
-      Body: fs.createReadStream(path.resolve(tmp)),
+      Body: fs.createReadStream(tmpPath),
       ContentType: metadata.file.mimetype,
       ACL: 'public-read',
     })
       .promise()
       .then(async response => {
         logger.info(`Uploaded to s3 ${response.Location}`);
-        const b64 = fs.readFileSync(tmp, { encoding: 'base64' });
+        const b64 = fs.readFileSync(tmpPath, { encoding: 'base64' });
 
         slackAsPromise('chat.postMessage', {
           channel: channelId,
