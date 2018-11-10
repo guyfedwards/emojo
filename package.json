@@ -11,7 +11,7 @@
   "scripts": {
     "deploy": "sls deploy",
     "develop": "sls offline",
-    "dev": "$npm_execpath develop",
+    "dev": "yarpm develop",
     "lint": "eslint src/",
     "lint:fix": "eslint --fix src/",
     "test": "echo TODO",
@@ -33,7 +33,8 @@
     "serverless": "^1.32.0",
     "serverless-dotenv-plugin": "^2.0.1",
     "serverless-offline": "^3.31.0",
-    "standard-version": "^4.4.0"
+    "standard-version": "^4.4.0",
+    "yarpm": "^0.2.1"
   },
   "dependencies": {
     "aws-sdk": "^2.350.0",
