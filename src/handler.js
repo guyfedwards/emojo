@@ -10,6 +10,7 @@ const octokit = require('@octokit/rest')();
 const Gifsicle = require('gifsicle-stream');
 
 const logger = require('./logger');
+const verify = require('./url-verification');
 
 const slack = new Slack(process.env.ACCESS_TOKEN);
 
@@ -23,19 +24,6 @@ const slackAsPromise = (method, params) => {
         : resolve(response);
     });
   });
-};
-
-const verify = data => {
-  if (data.token === process.env.VERIFICATION_TOKEN) {
-    logger.info('Verification successful');
-    return {
-      body: JSON.stringify({
-        challenge: data.challenge,
-      }),
-    };
-  } else {
-    throw new Error('Verification failed');
-  }
 };
 
 const getCorrespondingEmojiMessageFromEvent = async event => {
