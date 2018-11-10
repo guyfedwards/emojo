@@ -27,7 +27,7 @@ const verify = data => {
       }),
     };
   } else {
-    logger.error('Verification failed');
+    throw new Error('Verification failed');
   }
 };
 
