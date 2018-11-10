@@ -38,6 +38,7 @@
     "standard-version": "^4.4.0"
   },
   "dependencies": {
+    "@octokit/rest": "^15.16.1",
     "aws-sdk": "^2.350.0",
     "axios": "^0.18.0",
     "lint-staged": "^8.0.4",
