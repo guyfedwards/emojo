@@ -1,12 +1,13 @@
 const crypto = require('crypto');
-const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const stream = require('stream');
 const AWS = require('aws-sdk');
 const axios = require('axios');
 const sharp = require('sharp');
 const Slack = require('slack-node');
 const logger = require('./logger');
+const { Base64Encode } = require('base64-stream');
 const octokit = require('@octokit/rest')();
 
 const slack = new Slack(process.env.ACCESS_TOKEN);
@@ -96,8 +97,9 @@ const handle = async message => {
   const emojiAlias = emojiMsg.text.replace(/:/g, '');
 
   const tmp = crypto.randomBytes(16).toString('hex');
-  const tmpPath = path.resolve(os.tmpdir(), tmp);
-  const writeStream = fs.createWriteStream(tmpPath);
+  // const writeStream = fs.createWriteStream(tmpPath);
+  const resizedStream = new stream.PassThrough();
+  const b64Stream = new stream.PassThrough();
 
   const resizer = sharp()
     .max()
@@ -114,11 +116,45 @@ const handle = async message => {
       Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
     },
   }).then(response => {
-    response.data.pipe(resizer).pipe(writeStream);
+    response.data.pipe(resizer).pipe(resizedStream);
+  });
+
+  let b64Chunks = [];
+
+  resizedStream.pipe(b64Stream);
+
+  b64Stream.pipe(new Base64Encode());
+
+  b64Stream.on('data', chunk => {
+    b64Chunks.push(chunk);
+  });
+  const [owner, repo] = process.env.GITHUB_REPO.split('/');
+  const branch = process.env.GITHUB_REPO_BRANCH;
+  const emojiRepoDir = process.env.GITHUB_REPO_DIR;
+  const emojiPath = path.join(emojiRepoDir, `${emojiAlias}.${filetype}`);
+
+  b64Stream.on('finish', async () => {
+    console.log('b64', Buffer.concat(b64Chunks).toString('base64'));
+    try {
+      await octokit.repos.createFile({
+        owner,
+        repo,
+        path: emojiPath,
+        branch,
+        message: `emojo: added :${emojiAlias}:`,
+        content: Buffer.concat(b64Chunks).toString('base64'),
+      });
+      logger.info(`Created ${emojiAlias}.${filetype} in ${owner}/${repo}`);
+    } catch (e) {
+      logger.error(
+        `Error creating file on Github ${owner}/${repo}/${emojiPath}`,
+        e
+      );
+    }
   });
 
   const streamAsPromise = new Promise((resolve, reject) =>
-    writeStream.on('finish', resolve).on('error', reject)
+    resizedStream.on('finish', resolve).on('error', reject)
   );
 
   return streamAsPromise.then(async () => {
@@ -127,15 +163,13 @@ const handle = async message => {
     s3.upload({
       Bucket: process.env.S3_BUCKET,
       Key: emojiAlias,
-      // Body: writeStream,
-      Body: fs.createReadStream(tmpPath),
+      Body: resizedStream,
       ContentType: metadata.file.mimetype,
       ACL: 'public-read',
     })
       .promise()
       .then(async response => {
         logger.info(`Uploaded to s3 ${response.Location}`);
-        const b64 = fs.readFileSync(tmpPath, { encoding: 'base64' });
 
         slackAsPromise('chat.postMessage', {
           channel: channelId,
@@ -155,29 +189,6 @@ const handle = async message => {
           type: 'token',
           token: process.env.GITHUB_TOKEN,
         });
-
-        // allows full url or just owner/repo
-        const [repo, owner] = process.env.GITHUB_REPO.split('/').reverse();
-        const branch = process.env.GITHUB_REPO_BRANCH;
-        const emojiRepoDir = process.env.GITHUB_REPO_DIR;
-        const emojiPath = path.join(emojiRepoDir, `${emojiAlias}.${filetype}`);
-
-        try {
-          await octokit.repos.createFile({
-            owner,
-            repo,
-            path: emojiPath,
-            branch,
-            message: `emojo: added :${emojiAlias}:`,
-            content: b64,
-          });
-          logger.info(`Created ${emojiAlias}.${filetype} in ${owner}/${repo}`);
-        } catch (e) {
-          logger.error(
-            `Error creating file on Github ${owner}/${repo}/${emojiPath}`,
-            e
-          );
-        }
       })
       .catch(e => {
         logger.error(`Failed to upload to s3: ${tmp} %s`, e);
