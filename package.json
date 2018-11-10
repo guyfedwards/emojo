@@ -13,10 +13,8 @@
     "develop": "sls offline",
     "dev": "yarn develop",
     "lint": "eslint src/",
-    "lint:fix": "eslint --fix src/ *.js",
+    "lint:fix": "eslint --fix src/",
     "test": "echo TODO",
-    "precommit": "yarn lint",
-    "prepush": "yarn test",
     "release": "standard-version"
   },
   "devDependencies": {
