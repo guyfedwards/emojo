@@ -1,17 +1,19 @@
-const crypto = require('crypto');
 const fs = require('fs');
-const path = require('path');
 const os = require('os');
+const path = require('path');
 const AWS = require('aws-sdk');
 const axios = require('axios');
 const sharp = require('sharp');
+const crypto = require('crypto');
 const Slack = require('slack-node');
-const logger = require('./logger');
 const octokit = require('@octokit/rest')();
+const Gifsicle = require('gifsicle-stream');
+
+const logger = require('./logger');
 
 const slack = new Slack(process.env.ACCESS_TOKEN);
 
-const EMOJO_REGEX = /^:\w+:$/;
+const EMOJO_REGEX = /^:(\w+):$/;
 
 const slackAsPromise = (method, params) => {
   return new Promise((resolve, reject) => {
@@ -36,75 +38,79 @@ const verify = data => {
   }
 };
 
-const handle = async message => {
-  /**
-    * Get data from message
-      - File id
-      - Channel so we know where to reply to
-    * Do we have a :alias: or shall we go by filename?
-    * Get file info from file ID
-    * Download the file
-    * Determine if we need to resize it. width & height < 128px, & size < 64kb
-        dimensions: file.original_w, file.original_h
-        size: file.size (bytes by the look of it)
-        useful: file.name, file.title (same as name?) file.mimetype file.filetype
-          file.channels[]
-        urls: file.url_private, file.url_private_download
-          there are other URLs for premade thumbnails but none @128px :(
-     * Post back to slack
-     * Upload to git
-     * Delete from disk
-  */
+const getCorrespondingEmojiMessageFromEvent = async event => {
+  const response = await slackAsPromise('channels.history', {
+    channel: event.channel_id,
+    count: 10,
+  });
 
-  // TODO: change to message.channel
-  const channelId = 'CDV5BC8RK'; // '#lambda-test';
+  const history = response.messages;
+  const message = history.find(
+    msg => msg.files && msg.files[0].id === event.file_id
+  );
+
+  return (EMOJO_REGEX.exec(message.text) || []).pop();
+};
+
+const fileTypeIsSupported = async metadata => {
+  const extensions = ['png', 'jpeg', 'jpg', 'gif'];
+
+  if (!extensions.includes(metadata.file.filetype)) {
+    const msg = `Unsupported filetype ${metadata.file.filetype}`;
+
+    logger.error(msg);
+
+    throw new Error(msg);
+  }
+};
+
+const getResizer = mimetype => {
+  return mimetype === 'image/gif'
+    ? new Gifsicle(['--resize-fit', '128'])
+    : sharp()
+        .max()
+        .resize(128, 128, {
+          fit: sharp.fit.inside,
+          withoutEnlargement: true,
+        });
+};
+
+const handle = async message => {
+  message.channel_id = 'CDV5BC8RK'; // '#lambda-test'; @todo remove
+
+  const emojiAlias = await getCorrespondingEmojiMessageFromEvent(message);
+
+  if (!emojiAlias) {
+    // We need some consistency with how we're exiting
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: 'No corresponding :alias: message found for this upload',
+      }),
+    };
+  }
 
   const metadata = await slackAsPromise('files.info', {
     file: message.file_id,
   });
 
-  const { filetype } = metadata.file;
-
-  if (!['png', 'jpeg', 'jpg'].includes(filetype)) {
-    const msg = `Unsupported filetype ${metadata.file.filetype}`;
-    logger.error(msg);
-
+  try {
+    await fileTypeIsSupported(metadata);
+  } catch (e) {
     slackAsPromise('chat.postMessage', {
-      channel: channelId,
-      text: `${msg}. Try jpg, jpeg or png.`,
+      channel: message.channel_id,
+      text: e.message,
     });
 
-    throw new Error(msg);
+    // rethrow to exit lambda handler
+    throw e;
   }
-
-  const msgHistoryResponse = await slackAsPromise('channels.history', {
-    channel: channelId,
-    count: 10,
-  });
-  const msgHistory = msgHistoryResponse.messages;
-
-  const emojiMsg = msgHistory.find(msg => msg.files[0].id === message.file_id);
-
-  const isEmojiMsg = EMOJO_REGEX.test(emojiMsg.text);
-
-  if (!isEmojiMsg) {
-    return {
-      done: true,
-    };
-  }
-
-  const emojiAlias = emojiMsg.text.replace(/:/g, '');
 
   const tmp = crypto.randomBytes(16).toString('hex');
   const tmpPath = path.resolve(os.tmpdir(), tmp);
   const writeStream = fs.createWriteStream(tmpPath);
 
-  const resizer = sharp()
-    .max()
-    .resize(128, 128, {
-      fit: sharp.fit.inside,
-      withoutEnlargement: true,
-    });
+  const resizer = await getResizer(metadata.file.mimetype);
 
   axios({
     method: 'GET',
@@ -138,7 +144,7 @@ const handle = async message => {
         const b64 = fs.readFileSync(tmpPath, { encoding: 'base64' });
 
         slackAsPromise('chat.postMessage', {
-          channel: channelId,
+          channel: message.channel_id,
           text: 'This is my attempt at the emoji you asked for',
           attachments: JSON.stringify([
             { fallback: tmp, image_url: response.Location },
@@ -160,7 +166,10 @@ const handle = async message => {
         const [repo, owner] = process.env.GITHUB_REPO.split('/').reverse();
         const branch = process.env.GITHUB_REPO_BRANCH;
         const emojiRepoDir = process.env.GITHUB_REPO_DIR;
-        const emojiPath = path.join(emojiRepoDir, `${emojiAlias}.${filetype}`);
+        const emojiPath = path.join(
+          emojiRepoDir,
+          `${emojiAlias}.${metadata.file.filetype}`
+        );
 
         try {
           await octokit.repos.createFile({
@@ -171,12 +180,18 @@ const handle = async message => {
             message: `emojo: added :${emojiAlias}:`,
             content: b64,
           });
-          logger.info(`Created ${emojiAlias}.${filetype} in ${owner}/${repo}`);
+
+          logger.info(
+            `Created ${emojiAlias}.${
+              metadata.file.filetype
+            } in ${owner}/${repo}`
+          );
         } catch (e) {
           logger.error(
             `Error creating file on Github ${owner}/${repo}/${emojiPath}`,
             e
           );
+          // @todo: this needs handling as a proper response
         }
       })
       .catch(e => {

@@ -40,6 +40,7 @@
     "@octokit/rest": "^15.16.1",
     "aws-sdk": "^2.350.0",
     "axios": "^0.18.0",
+    "gifsicle-stream": "^0.3.1",
     "lint-staged": "^8.0.4",
     "sharp": "^0.21.0",
     "slack-node": "^0.1.8",
