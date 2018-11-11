@@ -11,17 +11,15 @@ afterEach(() => {
 });
 
 describe('Handler', () => {
-  const fixture = {
-    type: 'url_verification',
-    event: urlVerificationFixture,
-  };
+  it('calls verify when the event type is url_verification', async () => {
+    const fixture = {
+      type: 'url_verification',
+      event: urlVerificationFixture,
+    };
 
-  const event = {
-    body: JSON.stringify(fixture),
-  };
-
-  it('calls verify when the event type is foo', async () => {
-    const result = await handler(event);
+    const result = await handler({
+      body: JSON.stringify(fixture),
+    });
 
     expect(verify).toBeCalledWith(fixture);
     expect(result).toEqual('mocked');
