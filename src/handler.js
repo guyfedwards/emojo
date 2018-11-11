@@ -1,13 +1,15 @@
-const crypto = require('crypto');
 const fs = require('fs');
-const path = require('path');
 const os = require('os');
+const path = require('path');
 const AWS = require('aws-sdk');
 const axios = require('axios');
 const sharp = require('sharp');
+const crypto = require('crypto');
 const Slack = require('slack-node');
-const logger = require('./logger');
 const octokit = require('@octokit/rest')();
+const Gifsicle = require('gifsicle-stream');
+
+const logger = require('./logger');
 
 const slack = new Slack(process.env.ACCESS_TOKEN);
 
@@ -65,7 +67,7 @@ const handle = async message => {
 
   const { filetype } = metadata.file;
 
-  if (!['png', 'jpeg', 'jpg'].includes(filetype)) {
+  if (!['png', 'jpeg', 'jpg', 'gif'].includes(filetype)) {
     const msg = `Unsupported filetype ${metadata.file.filetype}`;
     logger.error(msg);
 
@@ -81,6 +83,7 @@ const handle = async message => {
     channel: channelId,
     count: 10,
   });
+
   const msgHistory = msgHistoryResponse.messages;
 
   const emojiMsg = msgHistory.find(msg => msg.files[0].id === message.file_id);
@@ -99,12 +102,15 @@ const handle = async message => {
   const tmpPath = path.resolve(os.tmpdir(), tmp);
   const writeStream = fs.createWriteStream(tmpPath);
 
-  const resizer = sharp()
-    .max()
-    .resize(128, 128, {
-      fit: sharp.fit.inside,
-      withoutEnlargement: true,
-    });
+  const resizer =
+    metadata.file.mimetype === 'image/gif'
+      ? new Gifsicle(['--resize-fit', '128'])
+      : sharp()
+          .max()
+          .resize(128, 128, {
+            fit: sharp.fit.inside,
+            withoutEnlargement: true,
+          });
 
   axios({
     method: 'GET',
