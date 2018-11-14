@@ -1,5 +1,5 @@
-const { handler } = require('../src/handler');
-const verify = require('../src/url-verification');
+const { handler } = require('./handler');
+const verify = require('./url-verification');
 const urlVerificationFixture = require('../__fixtures__/url-verification.json');
 
 jest.mock('../src/url-verification', () => {

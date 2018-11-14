@@ -1,4 +1,4 @@
-const verify = require('../src/url-verification');
+const verify = require('./url-verification');
 const fixture = require('../__fixtures__/url-verification.json');
 
 describe('URL verification', () => {
