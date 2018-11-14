@@ -12,8 +12,8 @@
     "deploy": "sls deploy",
     "develop": "sls offline",
     "dev": "yarpm develop",
-    "lint": "eslint src/ __tests__/ *.js",
-    "lint:fix": "eslint --fix src/ __tests__/ *.js",
+    "lint": "eslint src/ *.js",
+    "lint:fix": "eslint --fix src/ *.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "release": "standard-version"
