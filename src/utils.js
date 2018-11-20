@@ -25,12 +25,10 @@ exports.streamAsPromise = stream => {
 exports.getResizer = mimetype => {
   return mimetype === 'image/gif'
     ? new Gifsicle(['--resize-fit', '128'])
-    : sharp()
-        .max()
-        .resize(128, 128, {
-          fit: sharp.fit.inside,
-          withoutEnlargement: true,
-        });
+    : sharp().resize(128, 128, {
+        fit: sharp.fit.inside,
+        withoutEnlargement: true,
+      });
 };
 
 exports.downloadAsStream = url => {
