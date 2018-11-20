@@ -3,15 +3,13 @@ const os = require('os');
 const path = require('path');
 const AWS = require('aws-sdk');
 const axios = require('axios');
-const sharp = require('sharp');
 const crypto = require('crypto');
-const octokit = require('@octokit/rest')();
-const Gifsicle = require('gifsicle-stream');
 
 const logger = require('./logger');
 const { slack } = require('./slack');
 const verify = require('./url-verification');
-const { fileTypeIsSupported, streamAsPromise } = require('./utils');
+const { uploadToGithub } = require('./github');
+const { fileTypeIsSupported, streamAsPromise, getResizer } = require('./utils');
 
 const EMOJO_REGEX = /^:(\w+):$/;
 
@@ -29,17 +27,11 @@ const getCorrespondingEmojiMessageFromEvent = async event => {
   return (EMOJO_REGEX.exec(message.text) || []).pop();
 };
 
-const getResizer = mimetype => {
-  return mimetype === 'image/gif'
-    ? new Gifsicle(['--resize-fit', '128'])
-    : sharp()
-        .max()
-        .resize(128, 128, {
-          fit: sharp.fit.inside,
-          withoutEnlargement: true,
-        });
-};
-
+// Now that we're checking the file upload has an alias, we could probably revert
+// this back to actually uploading a file to the channel rather than sending a
+// message with an attachment which would mean we didn't need to upload to s3.
+// I haven't removed it in the event that we're keeping all of them for a showcase
+// website which we discussed briefly.
 const sendPreviewToSlack = async (emojiAlias, metadata, tmpPath) => {
   const s3upload = await uploadToS3(emojiAlias, metadata, tmpPath);
 
@@ -59,45 +51,6 @@ const sendPreviewToSlack = async (emojiAlias, metadata, tmpPath) => {
     return response;
   } catch (e) {
     logger.error(`Failed to upload to slack: ${s3upload.Location}`, e);
-  }
-};
-
-const uploadToGithub = async (alias, metadata, tmpPath) => {
-  octokit.authenticate({
-    type: 'token',
-    token: process.env.GITHUB_TOKEN,
-  });
-
-  const b64 = fs.readFileSync(tmpPath, { encoding: 'base64' });
-
-  // allows full url or just owner/repo
-  const [repo, owner] = process.env.GITHUB_REPO.split('/').reverse();
-  const branch = process.env.GITHUB_REPO_BRANCH;
-  const emojiRepoDir = process.env.GITHUB_REPO_DIR;
-  const emojiPath = path.join(
-    emojiRepoDir,
-    `${alias}.${metadata.file.filetype}`
-  );
-
-  try {
-    await octokit.repos.createFile({
-      owner,
-      repo,
-      path: emojiPath,
-      branch,
-      message: `emojo: added :${alias}:`,
-      content: b64,
-    });
-
-    logger.info(
-      `Created ${alias}.${metadata.file.filetype} in ${owner}/${repo}`
-    );
-  } catch (e) {
-    logger.error(
-      `Error creating file on Github ${owner}/${repo}/${emojiPath}`,
-      e
-    );
-    // @todo: this needs handling as a proper response
   }
 };
 

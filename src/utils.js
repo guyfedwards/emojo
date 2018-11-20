@@ -1,3 +1,6 @@
+const sharp = require('sharp');
+const Gifsicle = require('gifsicle-stream');
+
 const logger = require('./logger');
 
 exports.fileTypeIsSupported = async metadata => {
@@ -16,4 +19,15 @@ exports.streamAsPromise = stream => {
   return new Promise((resolve, reject) =>
     stream.on('finish', resolve).on('error', reject)
   );
+};
+
+exports.getResizer = mimetype => {
+  return mimetype === 'image/gif'
+    ? new Gifsicle(['--resize-fit', '128'])
+    : sharp()
+        .max()
+        .resize(128, 128, {
+          fit: sharp.fit.inside,
+          withoutEnlargement: true,
+        });
 };
