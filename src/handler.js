@@ -95,6 +95,36 @@ const uploadToGithub = async (alias, metadata, tmpPath) => {
   }
 };
 
+const downloadImage = url => {
+  return axios({
+    method: 'GET',
+    url: url,
+    responseType: 'stream',
+    headers: {
+      Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
+    },
+  });
+};
+
+const uploadToS3 = async (key, metadata, tmpPath) => {
+  const s3 = new AWS.S3();
+
+  try {
+    return s3
+      .upload({
+        Bucket: process.env.S3_BUCKET,
+        Key: key,
+        // Body: writeStream,
+        Body: fs.createReadStream(tmpPath),
+        ContentType: metadata.file.mimetype,
+        ACL: 'public-read',
+      })
+      .promise();
+  } catch (e) {
+    logger.error(`Failed to upload to s3: ${tmpPath} %s`, e);
+  }
+};
+
 // const validate = message => {
 // does it have a corresponding message and alias?
 //  - needs slack api
@@ -142,43 +172,21 @@ const handle = async message => {
   const tmpPath = path.resolve(os.tmpdir(), tmp);
   const writeStream = fs.createWriteStream(tmpPath);
 
-  const resizer = await getResizer(metadata.file.mimetype);
+  const resizer = getResizer(metadata.file.mimetype);
+  const response = await downloadImage(metadata.file.url_private);
 
-  axios({
-    method: 'GET',
-    url: metadata.file.url_private,
-    responseType: 'stream',
-    headers: {
-      Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
-    },
-  }).then(response => {
-    response.data.pipe(resizer).pipe(writeStream);
-  });
+  response.data.pipe(resizer).pipe(writeStream);
 
   return streamAsPromise(writeStream).then(async () => {
-    const s3 = new AWS.S3();
+    const s3upload = await uploadToS3();
 
-    s3.upload({
-      Bucket: process.env.S3_BUCKET,
-      Key: emojiAlias,
-      // Body: writeStream,
-      Body: fs.createReadStream(tmpPath),
-      ContentType: metadata.file.mimetype,
-      ACL: 'public-read',
-    })
-      .promise()
-      .then(async response => {
-        logger.info(`Uploaded to s3 ${response.Location}`);
+    logger.info(`Uploaded to s3 ${response.Location}`);
 
-        // Send a message to slack and attach the image
-        await sendPreviewToSlack(message.channel_id, response.Location);
+    // Send a message to slack and attach the image
+    await sendPreviewToSlack(message.channel_id, s3upload.Location);
 
-        // Pop it into Github
-        await uploadToGithub(emojiAlias, metadata, tmpPath);
-      })
-      .catch(e => {
-        logger.error(`Failed to upload to s3: ${tmp} %s`, e);
-      });
+    // Pop it into Github
+    await uploadToGithub(emojiAlias, metadata, tmpPath);
 
     return {
       done: true,
