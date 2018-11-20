@@ -23,7 +23,7 @@ const getCorrespondingEmojiMessageFromEvent = async event => {
     msg => msg.files && msg.files[0].id === event.file_id
   );
 
-  return (EMOJO_REGEX.exec(message.text) || []).pop();
+  return message && (EMOJO_REGEX.exec(message.text) || []).pop();
 };
 
 const downloadImage = url => {
