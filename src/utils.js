@@ -1,3 +1,4 @@
+const axios = require('axios');
 const sharp = require('sharp');
 const Gifsicle = require('gifsicle-stream');
 
@@ -30,4 +31,15 @@ exports.getResizer = mimetype => {
           fit: sharp.fit.inside,
           withoutEnlargement: true,
         });
+};
+
+exports.downloadAsStream = url => {
+  return axios({
+    method: 'GET',
+    url: url,
+    responseType: 'stream',
+    headers: {
+      Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
+    },
+  });
 };

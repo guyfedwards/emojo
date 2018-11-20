@@ -1,14 +1,18 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const axios = require('axios');
 const crypto = require('crypto');
 
 const logger = require('./logger');
 const verify = require('./url-verification');
 const { uploadToGithub } = require('./github');
 const { slack, sendPreview } = require('./slack');
-const { fileTypeIsSupported, streamAsPromise, getResizer } = require('./utils');
+const {
+  fileTypeIsSupported,
+  streamAsPromise,
+  getResizer,
+  downloadAsStream,
+} = require('./utils');
 
 const EMOJO_REGEX = /^:(\w+):$/;
 
@@ -24,17 +28,6 @@ const getCorrespondingEmojiMessageFromEvent = async event => {
   );
 
   return message && (EMOJO_REGEX.exec(message.text) || []).pop();
-};
-
-const downloadImage = url => {
-  return axios({
-    method: 'GET',
-    url: url,
-    responseType: 'stream',
-    headers: {
-      Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
-    },
-  });
 };
 
 // const validate = message => {
@@ -84,7 +77,7 @@ const handle = async message => {
   const tmpPath = path.resolve(os.tmpdir(), tmp);
   const writeStream = fs.createWriteStream(tmpPath);
   const resizer = getResizer(metadata.file.mimetype);
-  const image = await downloadImage(metadata.file.url_private);
+  const image = await downloadAsStream(metadata.file.url_private);
 
   // We can add the other stream here
   image.data.pipe(resizer).pipe(writeStream);
