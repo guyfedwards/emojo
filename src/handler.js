@@ -11,7 +11,7 @@ const Gifsicle = require('gifsicle-stream');
 const logger = require('./logger');
 const { slack } = require('./slack');
 const verify = require('./url-verification');
-const { fileTypeIsSupported } = require('./utils');
+const { fileTypeIsSupported, streamAsPromise } = require('./utils');
 
 const EMOJO_REGEX = /^:(\w+):$/;
 
@@ -155,11 +155,7 @@ const handle = async message => {
     response.data.pipe(resizer).pipe(writeStream);
   });
 
-  const streamAsPromise = new Promise((resolve, reject) =>
-    writeStream.on('finish', resolve).on('error', reject)
-  );
-
-  return streamAsPromise.then(async () => {
+  return streamAsPromise(writeStream).then(async () => {
     const s3 = new AWS.S3();
 
     s3.upload({
