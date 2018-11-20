@@ -5,29 +5,17 @@ const AWS = require('aws-sdk');
 const axios = require('axios');
 const sharp = require('sharp');
 const crypto = require('crypto');
-const Slack = require('slack-node');
 const octokit = require('@octokit/rest')();
 const Gifsicle = require('gifsicle-stream');
 
 const logger = require('./logger');
+const { slack } = require('./slack');
 const verify = require('./url-verification');
-
-const slack = new Slack(process.env.ACCESS_TOKEN);
 
 const EMOJO_REGEX = /^:(\w+):$/;
 
-const slackAsPromise = (method, params) => {
-  return new Promise((resolve, reject) => {
-    slack.api(method, params, (err, response) => {
-      err || !response.ok
-        ? reject(err || new Error(`Response from slack ${response.error}`))
-        : resolve(response);
-    });
-  });
-};
-
 const getCorrespondingEmojiMessageFromEvent = async event => {
-  const response = await slackAsPromise('channels.history', {
+  const response = await slack('channels.history', {
     channel: event.channel_id,
     count: 10,
   });
@@ -78,14 +66,14 @@ const handle = async message => {
     };
   }
 
-  const metadata = await slackAsPromise('files.info', {
+  const metadata = await slack('files.info', {
     file: message.file_id,
   });
 
   try {
     await fileTypeIsSupported(metadata);
   } catch (e) {
-    slackAsPromise('chat.postMessage', {
+    slack('chat.postMessage', {
       channel: message.channel_id,
       text: e.message,
     });
@@ -131,7 +119,7 @@ const handle = async message => {
         logger.info(`Uploaded to s3 ${response.Location}`);
         const b64 = fs.readFileSync(tmpPath, { encoding: 'base64' });
 
-        slackAsPromise('chat.postMessage', {
+        slack('chat.postMessage', {
           channel: message.channel_id,
           text: 'This is my attempt at the emoji you asked for',
           attachments: JSON.stringify([
