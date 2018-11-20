@@ -40,6 +40,22 @@ const getResizer = mimetype => {
         });
 };
 
+export const sendPreviewToSlack = (channel, url) => {
+  try {
+    const response = slack('chat.postMessage', {
+      channel: channel,
+      text: 'This is my attempt at the emoji you asked for',
+      attachments: JSON.stringify([{ fallback: url, image_url: url }]),
+    });
+
+    logger.info(`Sent to slack: ${url}`);
+
+    return response;
+  } catch (e) {
+    logger.error(`Failed to upload to slack: ${url}`, e);
+  }
+};
+
 // const validate = message => {
 // does it have a corresponding message and alias?
 //  - needs slack api
@@ -120,19 +136,8 @@ const handle = async message => {
         logger.info(`Uploaded to s3 ${response.Location}`);
         const b64 = fs.readFileSync(tmpPath, { encoding: 'base64' });
 
-        slack('chat.postMessage', {
-          channel: message.channel_id,
-          text: 'This is my attempt at the emoji you asked for',
-          attachments: JSON.stringify([
-            { fallback: tmp, image_url: response.Location },
-          ]),
-        })
-          .then(() => {
-            logger.info(`Sent to slack: ${tmp}`);
-          })
-          .catch(e => {
-            logger.error(`Failed to upload to slack: ${tmp}`, e);
-          });
+        // Send a message to slack and attach the image
+        await sendPreviewToSlack(message.channel_id, response.Location);
 
         octokit.authenticate({
           type: 'token',
