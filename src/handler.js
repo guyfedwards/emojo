@@ -40,8 +40,20 @@ const getResizer = mimetype => {
         });
 };
 
+// const validate = message => {
+// does it have a corresponding message and alias?
+//  - needs slack api
+//  - expected exit, 200. not error
+// does the alias clash? - need slack api
+//  - unexpected exit 400 bad request.
+// is the filetype supported? - needs file metadata
+//  - is error because alias found. exit 400 bad request
+// };
+
 const handle = async message => {
   message.channel_id = 'CDV5BC8RK'; // '#lambda-test'; @todo remove
+
+  // const validatated = await validate(message);
 
   const emojiAlias = await getCorrespondingEmojiMessageFromEvent(message);
 
