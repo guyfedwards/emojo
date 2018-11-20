@@ -40,7 +40,7 @@ const getResizer = mimetype => {
         });
 };
 
-export const sendPreviewToSlack = (channel, url) => {
+const sendPreviewToSlack = (channel, url) => {
   try {
     const response = slack('chat.postMessage', {
       channel: channel,
@@ -53,6 +53,45 @@ export const sendPreviewToSlack = (channel, url) => {
     return response;
   } catch (e) {
     logger.error(`Failed to upload to slack: ${url}`, e);
+  }
+};
+
+const uploadToGithub = async (alias, metadata, tmpPath) => {
+  octokit.authenticate({
+    type: 'token',
+    token: process.env.GITHUB_TOKEN,
+  });
+
+  const b64 = fs.readFileSync(tmpPath, { encoding: 'base64' });
+
+  // allows full url or just owner/repo
+  const [repo, owner] = process.env.GITHUB_REPO.split('/').reverse();
+  const branch = process.env.GITHUB_REPO_BRANCH;
+  const emojiRepoDir = process.env.GITHUB_REPO_DIR;
+  const emojiPath = path.join(
+    emojiRepoDir,
+    `${alias}.${metadata.file.filetype}`
+  );
+
+  try {
+    await octokit.repos.createFile({
+      owner,
+      repo,
+      path: emojiPath,
+      branch,
+      message: `emojo: added :${alias}:`,
+      content: b64,
+    });
+
+    logger.info(
+      `Created ${alias}.${metadata.file.filetype} in ${owner}/${repo}`
+    );
+  } catch (e) {
+    logger.error(
+      `Error creating file on Github ${owner}/${repo}/${emojiPath}`,
+      e
+    );
+    // @todo: this needs handling as a proper response
   }
 };
 
@@ -134,47 +173,12 @@ const handle = async message => {
       .promise()
       .then(async response => {
         logger.info(`Uploaded to s3 ${response.Location}`);
-        const b64 = fs.readFileSync(tmpPath, { encoding: 'base64' });
 
         // Send a message to slack and attach the image
         await sendPreviewToSlack(message.channel_id, response.Location);
 
-        octokit.authenticate({
-          type: 'token',
-          token: process.env.GITHUB_TOKEN,
-        });
-
-        // allows full url or just owner/repo
-        const [repo, owner] = process.env.GITHUB_REPO.split('/').reverse();
-        const branch = process.env.GITHUB_REPO_BRANCH;
-        const emojiRepoDir = process.env.GITHUB_REPO_DIR;
-        const emojiPath = path.join(
-          emojiRepoDir,
-          `${emojiAlias}.${metadata.file.filetype}`
-        );
-
-        try {
-          await octokit.repos.createFile({
-            owner,
-            repo,
-            path: emojiPath,
-            branch,
-            message: `emojo: added :${emojiAlias}:`,
-            content: b64,
-          });
-
-          logger.info(
-            `Created ${emojiAlias}.${
-              metadata.file.filetype
-            } in ${owner}/${repo}`
-          );
-        } catch (e) {
-          logger.error(
-            `Error creating file on Github ${owner}/${repo}/${emojiPath}`,
-            e
-          );
-          // @todo: this needs handling as a proper response
-        }
+        // Pop it into Github
+        await uploadToGithub(emojiAlias, metadata, tmpPath);
       })
       .catch(e => {
         logger.error(`Failed to upload to s3: ${tmp} %s`, e);
