@@ -178,15 +178,14 @@ const handle = async message => {
   response.data.pipe(resizer).pipe(writeStream);
 
   return streamAsPromise(writeStream).then(async () => {
-    const s3upload = await uploadToS3();
+    const s3upload = await uploadToS3(emojiAlias, metadata, tmpPath);
 
-    logger.info(`Uploaded to s3 ${response.Location}`);
+    logger.info(`Uploaded to s3 ${s3upload.Location}`);
 
-    // Send a message to slack and attach the image
-    await sendPreviewToSlack(message.channel_id, s3upload.Location);
-
-    // Pop it into Github
-    await uploadToGithub(emojiAlias, metadata, tmpPath);
+    await Promise.all([
+      sendPreviewToSlack(message.channel_id, s3upload.Location),
+      uploadToGithub(emojiAlias, metadata, tmpPath),
+    ]);
 
     return {
       done: true,
