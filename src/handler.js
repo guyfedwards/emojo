@@ -40,19 +40,25 @@ const getResizer = mimetype => {
         });
 };
 
-const sendPreviewToSlack = (channel, url) => {
+const sendPreviewToSlack = async (emojiAlias, metadata, tmpPath) => {
+  const s3upload = await uploadToS3(emojiAlias, metadata, tmpPath);
+
+  logger.info(`Uploaded to s3 ${s3upload.Location}`);
+
   try {
     const response = slack('chat.postMessage', {
-      channel: channel,
+      channel: metadata.file.channels.join(','),
       text: 'This is my attempt at the emoji you asked for',
-      attachments: JSON.stringify([{ fallback: url, image_url: url }]),
+      attachments: JSON.stringify([
+        { fallback: s3upload.Location, image_url: s3upload.Location },
+      ]),
     });
 
-    logger.info(`Sent to slack: ${url}`);
+    logger.info(`Sent to slack: ${s3upload.Location}`);
 
     return response;
   } catch (e) {
-    logger.error(`Failed to upload to slack: ${url}`, e);
+    logger.error(`Failed to upload to slack: ${s3upload.Location}`, e);
   }
 };
 
@@ -171,26 +177,30 @@ const handle = async message => {
   const tmp = crypto.randomBytes(16).toString('hex');
   const tmpPath = path.resolve(os.tmpdir(), tmp);
   const writeStream = fs.createWriteStream(tmpPath);
-
   const resizer = getResizer(metadata.file.mimetype);
-  const response = await downloadImage(metadata.file.url_private);
+  const image = await downloadImage(metadata.file.url_private);
 
-  response.data.pipe(resizer).pipe(writeStream);
+  // We can add the other stream here
+  image.data.pipe(resizer).pipe(writeStream);
 
-  return streamAsPromise(writeStream).then(async () => {
-    const s3upload = await uploadToS3(emojiAlias, metadata, tmpPath);
+  // We can add the other stream here when we have it w Promise.all
+  await streamAsPromise(writeStream);
 
-    logger.info(`Uploaded to s3 ${s3upload.Location}`);
+  // Both of these currently rely on the write to file happening which is why we
+  // need to wait for that at the moment. What we can do is pass the stream into
+  // uploadToGithub and sendPreviewToSlack and that way we can just have them only
+  // resolve when their respective stream has finished and remove the bit above
+  await Promise.all([
+    sendPreviewToSlack(emojiAlias, metadata, tmpPath),
+    uploadToGithub(emojiAlias, metadata, tmpPath),
+  ]);
 
-    await Promise.all([
-      sendPreviewToSlack(message.channel_id, s3upload.Location),
-      uploadToGithub(emojiAlias, metadata, tmpPath),
-    ]);
-
-    return {
-      done: true,
-    };
-  });
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      message: 'Created a brand new emjoi',
+    }),
+  };
 };
 
 exports.handler = async (event, context) => {
