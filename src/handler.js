@@ -11,6 +11,7 @@ const Gifsicle = require('gifsicle-stream');
 const logger = require('./logger');
 const { slack } = require('./slack');
 const verify = require('./url-verification');
+const { fileTypeIsSupported } = require('./utils');
 
 const EMOJO_REGEX = /^:(\w+):$/;
 
@@ -26,18 +27,6 @@ const getCorrespondingEmojiMessageFromEvent = async event => {
   );
 
   return (EMOJO_REGEX.exec(message.text) || []).pop();
-};
-
-const fileTypeIsSupported = async metadata => {
-  const extensions = ['png', 'jpeg', 'jpg', 'gif'];
-
-  if (!extensions.includes(metadata.file.filetype)) {
-    const msg = `Unsupported filetype ${metadata.file.filetype}`;
-
-    logger.error(msg);
-
-    throw new Error(msg);
-  }
 };
 
 const getResizer = mimetype => {
