@@ -9,20 +9,16 @@ const instance = new Slack(process.env.ACCESS_TOKEN);
 const uploadToS3 = async (key, metadata, tmpPath) => {
   const s3 = new AWS.S3();
 
-  try {
-    return s3
-      .upload({
-        Bucket: process.env.S3_BUCKET,
-        Key: `emoji/key`,
-        // Body: writeStream,
-        Body: fs.createReadStream(tmpPath),
-        ContentType: metadata.file.mimetype,
-        ACL: 'public-read',
-      })
-      .promise();
-  } catch (e) {
-    logger.error(`Failed to upload to s3: ${tmpPath} %s`, e);
-  }
+  return s3
+    .upload({
+      Bucket: process.env.S3_BUCKET,
+      Key: `emoji/key`,
+      // Body: writeStream,
+      Body: fs.createReadStream(tmpPath),
+      ContentType: metadata.file.mimetype,
+      ACL: 'public-read',
+    })
+    .promise();
 };
 
 const slack = (method, params) => {
