@@ -1,5 +1,7 @@
 const axios = require('axios');
-const { downloadAsStream } = require('./utils');
+const sharp = require('sharp');
+const Gifsicle = require('gifsicle-stream');
+const { downloadAsStream, getResizer } = require('./utils');
 
 jest.mock('axios');
 
@@ -42,6 +44,26 @@ describe('downloadAsStream', () => {
 
     response.then(value => {
       expect(value).toEqual('foo');
+    });
+  });
+});
+
+describe('getResizer', () => {
+  it('returns Gifsicle instance when mimetype === image/gif', () => {
+    // in theory we trust Gifsicle to do it's job as long as we configure
+    // it correctly, hence the check for the correct args being passed in...
+    const resizer = getResizer('image/gif');
+
+    expect(resizer).toBeInstanceOf(Gifsicle);
+    expect(resizer.args).toEqual(
+      expect.arrayContaining(['--resize-fit', '128'])
+    );
+  });
+
+  ['image/jpg', 'imgage/jpeg', 'image/png'].forEach(mime => {
+    it(`returns Sharp instance when mimetype is ${mime}`, () => {
+      const resizer = getResizer(mime);
+      expect(resizer).toBeInstanceOf(sharp);
     });
   });
 });
