@@ -1,33 +1,23 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const AWS = require('aws-sdk');
-const axios = require('axios');
-const sharp = require('sharp');
 const crypto = require('crypto');
-const Slack = require('slack-node');
-const octokit = require('@octokit/rest')();
-const Gifsicle = require('gifsicle-stream');
 
 const logger = require('./logger');
 const verify = require('./url-verification');
-
-const slack = new Slack(process.env.ACCESS_TOKEN);
+const { uploadToGithub } = require('./github');
+const { slack, sendPreview } = require('./slack');
+const {
+  fileTypeIsSupported,
+  promisifyStream,
+  getResizer,
+  streamingDownload,
+} = require('./utils');
 
 const EMOJO_REGEX = /^:(\w+):$/;
 
-const slackAsPromise = (method, params) => {
-  return new Promise((resolve, reject) => {
-    slack.api(method, params, (err, response) => {
-      err || !response.ok
-        ? reject(err || new Error(`Response from slack ${response.error}`))
-        : resolve(response);
-    });
-  });
-};
-
 const getCorrespondingEmojiMessageFromEvent = async event => {
-  const response = await slackAsPromise('channels.history', {
+  const response = await slack('channels.history', {
     channel: event.channel_id,
     count: 10,
   });
@@ -37,34 +27,23 @@ const getCorrespondingEmojiMessageFromEvent = async event => {
     msg => msg.files && msg.files[0].id === event.file_id
   );
 
-  return (EMOJO_REGEX.exec(message.text) || []).pop();
+  return message && (EMOJO_REGEX.exec(message.text) || []).pop();
 };
 
-const fileTypeIsSupported = async metadata => {
-  const extensions = ['png', 'jpeg', 'jpg', 'gif'];
-
-  if (!extensions.includes(metadata.file.filetype)) {
-    const msg = `Unsupported filetype ${metadata.file.filetype}`;
-
-    logger.error(msg);
-
-    throw new Error(msg);
-  }
-};
-
-const getResizer = mimetype => {
-  return mimetype === 'image/gif'
-    ? new Gifsicle(['--resize-fit', '128'])
-    : sharp()
-        .max()
-        .resize(128, 128, {
-          fit: sharp.fit.inside,
-          withoutEnlargement: true,
-        });
-};
+// const validate = message => {
+// does it have a corresponding message and alias?
+//  - needs slack api
+//  - expected exit, 200. not error
+// does the alias clash? - need slack api
+//  - unexpected exit 400 bad request.
+// is the filetype supported? - needs file metadata
+//  - is error because alias found. exit 400 bad request
+// };
 
 const handle = async message => {
   message.channel_id = 'CDV5BC8RK'; // '#lambda-test'; @todo remove
+
+  // const validatated = await validate(message);
 
   const emojiAlias = await getCorrespondingEmojiMessageFromEvent(message);
 
@@ -78,14 +57,14 @@ const handle = async message => {
     };
   }
 
-  const metadata = await slackAsPromise('files.info', {
+  const metadata = await slack('files.info', {
     file: message.file_id,
   });
 
   try {
-    await fileTypeIsSupported(metadata);
+    await fileTypeIsSupported(metadata.file.filetype);
   } catch (e) {
-    slackAsPromise('chat.postMessage', {
+    slack('chat.postMessage', {
       channel: message.channel_id,
       text: e.message,
     });
@@ -97,99 +76,31 @@ const handle = async message => {
   const tmp = crypto.randomBytes(16).toString('hex');
   const tmpPath = path.resolve(os.tmpdir(), tmp);
   const writeStream = fs.createWriteStream(tmpPath);
+  const resizer = getResizer(metadata.file.mimetype);
 
-  const resizer = await getResizer(metadata.file.mimetype);
+  // We can add the other stream here
+  (await streamingDownload(metadata.file.url_private))
+    .pipe(resizer)
+    .pipe(writeStream);
 
-  axios({
-    method: 'GET',
-    url: metadata.file.url_private,
-    responseType: 'stream',
-    headers: {
-      Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
-    },
-  }).then(response => {
-    response.data.pipe(resizer).pipe(writeStream);
-  });
+  // We can add the other stream here when we have it w Promise.all
+  await promisifyStream(writeStream);
 
-  const streamAsPromise = new Promise((resolve, reject) =>
-    writeStream.on('finish', resolve).on('error', reject)
-  );
+  // Both of these currently rely on the write to file happening which is why we
+  // need to wait for that at the moment. What we can do is pass the stream into
+  // uploadToGithub and sendPreview and that way we can just have them only
+  // resolve when their respective stream has finished and remove the bit above
+  await Promise.all([
+    sendPreview(emojiAlias, metadata, tmpPath),
+    uploadToGithub(emojiAlias, metadata, tmpPath),
+  ]);
 
-  return streamAsPromise.then(async () => {
-    const s3 = new AWS.S3();
-
-    s3.upload({
-      Bucket: process.env.S3_BUCKET,
-      Key: emojiAlias,
-      // Body: writeStream,
-      Body: fs.createReadStream(tmpPath),
-      ContentType: metadata.file.mimetype,
-      ACL: 'public-read',
-    })
-      .promise()
-      .then(async response => {
-        logger.info(`Uploaded to s3 ${response.Location}`);
-        const b64 = fs.readFileSync(tmpPath, { encoding: 'base64' });
-
-        slackAsPromise('chat.postMessage', {
-          channel: message.channel_id,
-          text: 'This is my attempt at the emoji you asked for',
-          attachments: JSON.stringify([
-            { fallback: tmp, image_url: response.Location },
-          ]),
-        })
-          .then(() => {
-            logger.info(`Sent to slack: ${tmp}`);
-          })
-          .catch(e => {
-            logger.error(`Failed to upload to slack: ${tmp}`, e);
-          });
-
-        octokit.authenticate({
-          type: 'token',
-          token: process.env.GITHUB_TOKEN,
-        });
-
-        // allows full url or just owner/repo
-        const [repo, owner] = process.env.GITHUB_REPO.split('/').reverse();
-        const branch = process.env.GITHUB_REPO_BRANCH;
-        const emojiRepoDir = process.env.GITHUB_REPO_DIR;
-        const emojiPath = path.join(
-          emojiRepoDir,
-          `${emojiAlias}.${metadata.file.filetype}`
-        );
-
-        try {
-          await octokit.repos.createFile({
-            owner,
-            repo,
-            path: emojiPath,
-            branch,
-            message: `emojo: added :${emojiAlias}:`,
-            content: b64,
-          });
-
-          logger.info(
-            `Created ${emojiAlias}.${
-              metadata.file.filetype
-            } in ${owner}/${repo}`
-          );
-        } catch (e) {
-          logger.error(
-            `Error creating file on Github ${owner}/${repo}/${emojiPath}`,
-            e
-          );
-          // @todo: this needs handling as a proper response
-        }
-      })
-      .catch(e => {
-        logger.error(`Failed to upload to s3: ${tmp} %s`, e);
-      });
-
-    return {
-      done: true,
-    };
-  });
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      message: 'Created a brand new emoji',
+    }),
+  };
 };
 
 exports.handler = async (event, context) => {
