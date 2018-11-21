@@ -46,7 +46,7 @@ exports.sendPreview = async (emojiAlias, metadata, tmpPath) => {
   logger.info(`Uploaded to s3 ${s3upload.Location}`);
 
   try {
-    const response = slack('chat.postMessage', {
+    const response = await slack('chat.postMessage', {
       channel: metadata.file.channels.join(','),
       text: 'This is my attempt at the emoji you asked for',
       attachments: JSON.stringify([
@@ -56,7 +56,8 @@ exports.sendPreview = async (emojiAlias, metadata, tmpPath) => {
 
     logger.info(`Sent to slack: ${s3upload.Location}`);
 
-    return response;
+    // Needs to resolve a promise because this is used in a promise.all
+    return Promise.resolve(response);
   } catch (e) {
     logger.error(`Failed to upload to slack: ${s3upload.Location}`, e);
   }
