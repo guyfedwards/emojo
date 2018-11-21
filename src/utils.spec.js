@@ -1,9 +1,18 @@
 const axios = require('axios');
 const sharp = require('sharp');
+const { Readable } = require('stream');
 const Gifsicle = require('gifsicle-stream');
-const { downloadAsStream, getResizer } = require('./utils');
+const { streamingDownload, getResizer } = require('./utils');
 
 jest.mock('axios');
+
+let value = {
+  data: new Readable(),
+};
+
+let url = 'https://emjo.jo';
+
+axios.mockReturnValue(value);
 
 describe('downloadAsStream', () => {
   const OLD_ENV = process.env;
@@ -19,8 +28,7 @@ describe('downloadAsStream', () => {
   it('sends a request to the url', () => {
     process.env.ACCESS_TOKEN = 'DQ8BAQoFBwUFAQcHBAsNBQ';
 
-    const url = 'https://emjo.jo';
-    downloadAsStream(url);
+    streamingDownload(url);
 
     expect(axios).toBeCalledWith({
       method: 'GET',
@@ -37,14 +45,8 @@ describe('downloadAsStream', () => {
   //  - return a promise
   //  - return a readable stream inside response.data
   it('returns the result from axios', () => {
-    axios.mockResolvedValue('foo');
-
-    const url = 'https://emjo.jo';
-    const response = downloadAsStream(url);
-
-    response.then(value => {
-      expect(value).toEqual('foo');
-    });
+    const download = streamingDownload(url);
+    expect(download).resolves.toEqual(value.data);
   });
 });
 

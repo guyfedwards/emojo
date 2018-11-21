@@ -16,7 +16,7 @@ exports.fileTypeIsSupported = type => {
   }
 };
 
-exports.streamAsPromise = stream => {
+exports.promisifyStream = stream => {
   return new Promise((resolve, reject) =>
     stream.on('finish', resolve).on('error', reject)
   );
@@ -31,8 +31,8 @@ exports.getResizer = mimetype => {
       });
 };
 
-exports.downloadAsStream = url => {
-  return axios({
+exports.streamingDownload = async url => {
+  const response = await axios({
     method: 'GET',
     url: url,
     responseType: 'stream',
@@ -40,4 +40,6 @@ exports.downloadAsStream = url => {
       Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
     },
   });
+
+  return response.data;
 };

@@ -9,9 +9,9 @@ const { uploadToGithub } = require('./github');
 const { slack, sendPreview } = require('./slack');
 const {
   fileTypeIsSupported,
-  streamAsPromise,
+  promisifyStream,
   getResizer,
-  downloadAsStream,
+  streamingDownload,
 } = require('./utils');
 
 const EMOJO_REGEX = /^:(\w+):$/;
@@ -77,13 +77,14 @@ const handle = async message => {
   const tmpPath = path.resolve(os.tmpdir(), tmp);
   const writeStream = fs.createWriteStream(tmpPath);
   const resizer = getResizer(metadata.file.mimetype);
-  const image = await downloadAsStream(metadata.file.url_private);
 
   // We can add the other stream here
-  image.data.pipe(resizer).pipe(writeStream);
+  (await streamingDownload(metadata.file.url_private))
+    .pipe(resizer)
+    .pipe(writeStream);
 
   // We can add the other stream here when we have it w Promise.all
-  await streamAsPromise(writeStream);
+  await promisifyStream(writeStream);
 
   // Both of these currently rely on the write to file happening which is why we
   // need to wait for that at the moment. What we can do is pass the stream into
