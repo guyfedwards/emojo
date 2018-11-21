@@ -26,7 +26,7 @@ exports.getResizer = mimetype => {
   return mimetype === 'image/gif'
     ? new Gifsicle(['--resize-fit', '128'])
     : sharp().resize(128, 128, {
-        fit: sharp.fit.inside,
+        fit: sharp.fit.cover,
         withoutEnlargement: true,
       });
 };
