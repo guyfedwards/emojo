@@ -97,7 +97,7 @@ const handle = async message => {
   return {
     statusCode: 200,
     body: JSON.stringify({
-      message: 'Created a brand new emjoi',
+      message: 'Created a brand new emoji',
     }),
   };
 };
