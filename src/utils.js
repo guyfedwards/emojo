@@ -4,11 +4,11 @@ const Gifsicle = require('gifsicle-stream');
 
 const logger = require('./logger');
 
-exports.fileTypeIsSupported = async metadata => {
+exports.fileTypeIsSupported = type => {
   const extensions = ['png', 'jpeg', 'jpg', 'gif'];
 
-  if (!extensions.includes(metadata.file.filetype)) {
-    const msg = `Unsupported filetype ${metadata.file.filetype}`;
+  if (!extensions.includes(type)) {
+    const msg = `Unsupported filetype ${type}`;
 
     logger.error(msg);
 

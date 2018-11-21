@@ -62,7 +62,7 @@ const handle = async message => {
   });
 
   try {
-    await fileTypeIsSupported(metadata);
+    await fileTypeIsSupported(metadata.file.filetype);
   } catch (e) {
     slack('chat.postMessage', {
       channel: message.channel_id,
