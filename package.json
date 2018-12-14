@@ -16,7 +16,8 @@
     "lint:fix": "eslint --fix src/ *.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
-    "release": "standard-version"
+    "release": "standard-version",
+    "build:sharp": "docker build -t serverless-sharp-image lambda-sharp && docker run -v \"$PWD/lambda-sharp\":/var/task serverless-sharp-image"
   },
   "devDependencies": {
     "@commitlint/cli": "^7.2.1",
