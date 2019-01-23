@@ -48,6 +48,10 @@ resources:
 
 package:
   excludeDevDependencies: true
+  exclude:
+    - coverage/**
+    - .circleci/**
+    - .git/**
 
 custom:
   serverless-offline:
