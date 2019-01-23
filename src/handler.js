@@ -41,7 +41,7 @@ const getCorrespondingEmojiMessageFromEvent = async event => {
 // };
 
 const handle = async message => {
-  message.channel_id = 'CDV5BC8RK'; // '#lambda-test'; @todo remove
+  // message.channel_id = 'CDV5BC8RK'; // '#lambda-test'; @todo remove
 
   // const validatated = await validate(message);
 
