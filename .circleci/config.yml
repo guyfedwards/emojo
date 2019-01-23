@@ -38,7 +38,12 @@ jobs:
     steps:
       - attach_workspace:
           at: ~/emojo
-      - run: node_modules/.bin/serverless deploy --verbose --package .serverless
+      - run: |
+          node_modules/.bin/serverless deploy \
+            --verbose \
+            --stage production \
+            --region eu-west-1 \
+            --package .serverless
 
 workflows:
   version: 2
