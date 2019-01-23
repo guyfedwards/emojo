@@ -45,7 +45,7 @@ jobs:
             --package .serverless
 
 workflows:
-  version: 2.1
+  version: 2
   build_test_deploy:
     jobs:
       - build
