@@ -7030,7 +7030,7 @@ serverless-offline@^4.2.0:
     trim-newlines "^2.0.0"
     velocityjs "^1.1.2"
 
-serverless@^1.32.0:
+serverless@^1.36.3:
   version "1.36.3"
   resolved "https://registry.yarnpkg.com/serverless/-/serverless-1.36.3.tgz#0645fcce7d83cee75b3969e9765ebf3fda2ca833"
   integrity sha512-tFiePa29gHrbG3EbmegVeScUsJrDP+sB93nGPNW/R6DGccqxcI+84zZ2ICSoIF/DwH0YpmT4kffrqEzpadlKCw==
