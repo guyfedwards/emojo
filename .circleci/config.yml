@@ -21,7 +21,7 @@ jobs:
       - yarn/update_dependencies
       - yarn/lint
       - yarn/test
-      - yarn/run:
+      - yarn/run-script:
           script: serverless package
 
       - persist_to_workspace:
