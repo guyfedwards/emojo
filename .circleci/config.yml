@@ -20,8 +20,10 @@ jobs:
       - yarn/update_dependencies
       - run: yarn lint
       - run: yarn test
-      - run: yarn serverless package
-
+      - run: |
+          yarn serverless package \
+            --stage production \
+            --region eu-west-1
       - persist_to_workspace:
           root: .
           paths:
