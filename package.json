@@ -9,6 +9,8 @@
   "license": "MIT",
   "private": false,
   "scripts": {
+    "sls": "serverless",
+    "serverless": "serverless",
     "deploy": "sls deploy",
     "develop": "sls offline",
     "dev": "yarpm develop",
@@ -35,7 +37,7 @@
     "prettier": "^1.14.3",
     "serverless": "^1.32.0",
     "serverless-dotenv-plugin": "^2.0.1",
-    "serverless-offline": "^3.31.0",
+    "serverless-offline": "^4.2.0",
     "standard-version": "^4.4.0",
     "yarpm": "^0.2.1"
   },
