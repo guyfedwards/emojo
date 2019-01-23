@@ -18,12 +18,9 @@ jobs:
           yum install yarn -y
 
       - yarn/update_dependencies
-      - yarn/run-script:
-          script: lint
-      - yarn/run-script:
-          script: test
-      - yarn/run-script:
-          script: serverless package
+      - run: yarn lint
+      - run: yarn test
+      - run: yarn serverless package
 
       - persist_to_workspace:
           root: .
