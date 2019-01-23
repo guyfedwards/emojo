@@ -20,6 +20,7 @@ jobs:
       - yarn/update_dependencies
       - run: yarn lint
       - run: yarn test
+      - run: yarn prune
       - run: |
           yarn serverless package \
             --stage production \
