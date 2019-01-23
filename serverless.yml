@@ -32,7 +32,7 @@ functions:
     handler: src/handler.handler
     events:
       - http:
-          path: slack/emoji
+          path: slack/emojo
           method: POST
 
 resources:
