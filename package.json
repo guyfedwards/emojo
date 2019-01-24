@@ -19,7 +19,7 @@
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "release": "standard-version",
-    "prune": "prune"
+    "pruner-cli": "prune"
   },
   "devDependencies": {
     "@commitlint/cli": "^7.2.1",
