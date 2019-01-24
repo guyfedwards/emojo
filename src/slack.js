@@ -12,7 +12,7 @@ const uploadToS3 = async (key, metadata, tmpPath) => {
   return s3
     .upload({
       Bucket: process.env.S3_BUCKET,
-      Key: `emoji/key`,
+      Key: `emoji/${key}`,
       // Body: writeStream,
       Body: fs.createReadStream(tmpPath),
       ContentType: metadata.file.mimetype,
