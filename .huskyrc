@@ -1,6 +1,6 @@
 {
   "hooks": {
-    "postinstall": "yarpm prune",
+    "postinstall": "yarpm pruner-cli",
     "pre-push": "yarpm test",
     "pre-commit": "lint-staged",
     "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
