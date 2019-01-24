@@ -23,6 +23,10 @@ provider:
             - "/*"
 
   environment:
+    GITHUB_TOKEN: ${env:GITHUB_TOKEN}
+    GITHUB_REPO: ${env:GITHUB_REPO}
+    GITHUB_REPO_DIR: ${env:GITHUB_REPO_DIR}
+    GITHUB_REPO_BRANCH: ${env:GITHUB_REPO_BRANCH}
     ACCESS_TOKEN: ${env:ACCESS_TOKEN}
     VERIFICATION_TOKEN: ${env:VERIFICATION_TOKEN}
     S3_BUCKET:
