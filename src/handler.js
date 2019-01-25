@@ -95,10 +95,14 @@ const handle = async message => {
     uploadToGithub(emojiAlias, metadata, tmpPath),
   ]);
 
+  // https://stackoverflow.com/a/50735321/769237
   return {
     statusCode: 200,
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({
-      message: 'Created a brand new emoji',
+      ok: true,
     }),
   };
 };
