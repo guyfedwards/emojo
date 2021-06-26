@@ -1,23 +1,18 @@
 ---
 version: 2.1
 
-orbs:
-  yarn: artsy/yarn@0.1.4
-
 jobs:
   build:
     working_directory: ~/emojo
 
     docker:
-      - image: lambci/lambda:build-nodejs10.x
+      - image: amazon/aws-sam-cli-build-image-nodejs14.x
 
     steps:
-      - run: |
-          curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | \
-            tee /etc/yum.repos.d/yarn.repo
-          yum install yarn -y
-
-      - yarn/update_dependencies
+      - run: pwd
+      - run: ls -la ~/emojo
+      - run: npm install -g yarn
+      - run: yarn
       - run: yarn lint
       - run: yarn test
       - run: yarn pruner-cli
@@ -35,7 +30,7 @@ jobs:
   deploy:
     working_directory: ~/emojo
     docker:
-      - image: guyfedwards/alpine-node-git-bash
+      - image: node:14-alpine3.12
     steps:
       - attach_workspace:
           at: ~/emojo
