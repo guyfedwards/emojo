@@ -9,7 +9,7 @@ jobs:
     working_directory: ~/emojo
 
     docker:
-      - image: lambci/lambda:build-nodejs8.10
+      - image: lambci/lambda:build-nodejs10.x
 
     steps:
       - run: |
