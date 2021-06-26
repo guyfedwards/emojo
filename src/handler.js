@@ -17,7 +17,7 @@ const {
 const EMOJO_REGEX = /^:(\w+):$/;
 
 const getCorrespondingEmojiMessageFromEvent = async event => {
-  const response = await slack('channels.history', {
+  const response = await slack('conversations.history', {
     channel: event.channel_id,
     count: 10,
   });
@@ -93,7 +93,10 @@ const handle = async message => {
   await Promise.all([
     sendPreview(emojiAlias, metadata, tmpPath),
     uploadToGithub(emojiAlias, metadata, tmpPath),
-  ]);
+  ]).catch(e => {
+    logger.error(e);
+    throw e;
+  });
 
   // https://stackoverflow.com/a/50735321/769237
   return {

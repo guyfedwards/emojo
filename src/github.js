@@ -39,6 +39,7 @@ exports.uploadToGithub = async (alias, metadata, tmpPath) => {
       `Error creating file on Github ${owner}/${repo}/${emojiPath}`,
       e
     );
+    throw e;
     // @todo: this needs handling as a proper response
   }
 };
