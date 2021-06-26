@@ -8,7 +8,7 @@ plugins:
 provider:
   name: aws
   stage: dev
-  runtime: nodejs10.x
+  runtime: nodejs14.x
   region: eu-west-1
   iamRoleStatements:
     - Effect: "Allow"
