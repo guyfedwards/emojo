@@ -9,8 +9,11 @@ jobs:
       - image: amazon/aws-sam-cli-build-image-nodejs14.x
 
     steps:
-      - run: pwd
-      - run: ls -la ~/emojo
+      - checkout
+      - restore_cache:
+          keys:
+            - yarn-deps-{{ checksum "yarn.lock" }}
+            - yarn-deps
       - run: npm install -g yarn
       - run: yarn
       - run: yarn lint
@@ -19,6 +22,10 @@ jobs:
           yarn serverless package \
             --stage production \
             --region eu-west-1
+      - save_cache:
+          paths:
+            - node_modules
+          key: yarn-deps-{{ checksum "yarn.lock" }}-{{ epoch }}
       - persist_to_workspace:
           root: .
           paths:
